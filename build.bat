@@ -10,6 +10,7 @@ SET MAIN_FILE=./main.go
 SET BUILD_DIR=.\bin
 
 echo Building for Windows...
+IF NOT EXIST %BUILD_DIR% MD %BUILD_DIR%
 IF NOT EXIST %BUILD_DIR%\windows MD %BUILD_DIR%\windows
 SET GOOS=windows
 SET GOARCH=amd64
