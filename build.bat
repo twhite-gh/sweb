@@ -14,7 +14,7 @@ IF NOT EXIST %BUILD_DIR% MD %BUILD_DIR%
 IF NOT EXIST %BUILD_DIR%\windows MD %BUILD_DIR%\windows
 SET GOOS=windows
 SET GOARCH=amd64
-go build -o %BUILD_DIR%\windows\%PROJECT_NAME%.exe %MAIN_FILE%
+go build -ldflags "-s -w" -o %BUILD_DIR%\windows\%PROJECT_NAME%.exe %MAIN_FILE%
 IF %ERRORLEVEL% NEQ 0 (
     echo Windows build failed!
     GOTO :EOF
@@ -26,7 +26,7 @@ echo Building for Linux...
 IF NOT EXIST %BUILD_DIR%\linux MD %BUILD_DIR%\linux
 SET GOOS=linux
 SET GOARCH=amd64
-go build -o %BUILD_DIR%\linux\%PROJECT_NAME% %MAIN_FILE%
+go build -ldflags "-s -w" -o %BUILD_DIR%\linux\%PROJECT_NAME% %MAIN_FILE%
 IF %ERRORLEVEL% NEQ 0 (
     echo Linux build failed!
     GOTO :EOF
