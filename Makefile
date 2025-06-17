@@ -14,13 +14,13 @@ all: windows linux
 windows:
 	@echo "Building for Windows..."
 	mkdir -p $(BUILD_DIR)/windows
-	GOOS=windows GOARCH=amd64 go build -o $(BUILD_DIR)/windows/$(PROJECT_NAME).exe $(MAIN_FILE)
+	GOOS=windows GOARCH=amd64 go build -o $(BUILD_DIR)/windows/$(PROJECT_NAME)-$(GOOS)-$(GOARCH).exe $(MAIN_FILE)
 	@echo "Windows build complete: $(BUILD_DIR)/windows/$(PROJECT_NAME).exe"
 
 linux:
 	@echo "Building for Linux..."
 	mkdir -p $(BUILD_DIR)/linux
-	GOOS=linux GOARCH=amd64 go build -o $(BUILD_DIR)/linux/$(PROJECT_NAME) $(MAIN_FILE)
+	GOOS=linux GOARCH=amd64 go build -o $(BUILD_DIR)/linux/$(PROJECT_NAME)-$(GOOS)-$(GOARCH) $(MAIN_FILE)
 	@echo "Linux build complete: $(BUILD_DIR)/linux/$(PROJECT_NAME)"
 
 clean:
