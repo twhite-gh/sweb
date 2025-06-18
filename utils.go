@@ -90,6 +90,8 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 				return "enabled"
 			}(),
 		},
+		"socks5": getSOCKS5Status(),
+		"proxy":  getHTTPProxyStatus(),
 	}
 
 	json.NewEncoder(w).Encode(response)
@@ -109,8 +111,12 @@ func showHelpInfo() {
 	fmt.Println("  -webdav-dir <目录>          WebDAV服务的根目录 (默认: 当前目录)")
 	fmt.Println("  -webdav-readonly            WebDAV服务只读模式 (默认: 读写)")
 	fmt.Println("  -https, --enable-https      启用HTTPS服务 (默认: 禁用)")
+	fmt.Println("  -socks5, --enable-socks5    启用SOCKS5代理服务 (默认: 禁用)")
+	fmt.Println("  -proxy, --enable-proxy      启用HTTP代理服务 (默认: 禁用)")
 	fmt.Println("  -port, -p <端口>           指定HTTP服务器端口 (默认: 8080)")
 	fmt.Println("  -https-port <端口>         指定HTTPS服务器端口 (默认: 8443)")
+	fmt.Println("  -socks5-port <端口>        指定SOCKS5代理端口 (默认: 1080)")
+	fmt.Println("  -proxy-port <端口>         指定HTTP代理端口 (默认: 10808)")
 	fmt.Println("  -cert-dir <目录>           SSL证书目录 (默认: ./cert)")
 	fmt.Println("  -help, -h                  显示此帮助信息")
 	fmt.Println()
@@ -120,9 +126,13 @@ func showHelpInfo() {
 	fmt.Println("  sweb.exe -files                    # 启动服务器并启用文件浏览功能")
 	fmt.Println("  sweb.exe -https                    # 启动HTTP和HTTPS服务器")
 	fmt.Println("  sweb.exe -webdav                   # 启动服务器并启用WebDAV服务")
+	fmt.Println("  sweb.exe -socks5                   # 启动SOCKS5代理服务")
+	fmt.Println("  sweb.exe -proxy                    # 启动HTTP代理服务")
 	fmt.Println("  sweb.exe -webdav -webdav-readonly  # 启动只读WebDAV服务")
 	fmt.Println("  sweb.exe -webdav -webdav-dir /data # 指定WebDAV目录")
-	fmt.Println("  sweb.exe -upload -files -webdav -https # 启用所有功能")
+	fmt.Println("  sweb.exe -socks5 -socks5-port 1080 # 指定SOCKS5代理端口")
+	fmt.Println("  sweb.exe -proxy -proxy-port 10808  # 指定HTTP代理端口")
+	fmt.Println("  sweb.exe -upload -files -webdav -https -socks5 -proxy # 启用所有功能")
 	fmt.Println("  sweb.exe -https -https-port 9443   # 指定HTTPS端口")
 	fmt.Println()
 	fmt.Println("HTTPS证书:")
@@ -134,9 +144,11 @@ func showHelpInfo() {
 	fmt.Println("  HTTP: http://localhost:8080")
 	fmt.Println("  HTTPS: https://localhost:8443 (如果启用)")
 	fmt.Println("  WebDAV: http://localhost:8080/webdav")
+	fmt.Println("  SOCKS5代理: localhost:1080 (如果启用)")
+	fmt.Println("  HTTP代理: localhost:10808 (如果启用)")
 	fmt.Println()
 	fmt.Println("安全说明:")
-	fmt.Println("  文件上传、文件浏览、WebDAV和HTTPS功能默认禁用以确保服务器安全。")
+	fmt.Println("  文件上传、文件浏览、WebDAV、HTTPS、SOCKS5代理和HTTP代理功能默认禁用以确保服务器安全。")
 	fmt.Println("  只有在明确需要时才使用相应参数启用。")
 }
 
@@ -288,8 +300,30 @@ func generateEnhancedDefaultPageContent() string {
         </div>
 
         <div class="feature">
+            <strong>🔌 SOCKS5代理服务</strong><br>
+            <span id="socks5-feature-description">高性能SOCKS5代理服务器，支持TCP连接代理。</span>
+            <span id="socks5-status" class="status-indicator loading">🔄 检查中...</span>
+            <div id="socks5-info" class="webdav-info hidden">
+                <strong>代理地址:</strong> <code id="socks5-address">localhost:1080</code><br>
+                <strong>协议版本:</strong> <span>SOCKS5</span><br>
+                <strong>认证方式:</strong> <span>无认证</span>
+            </div>
+        </div>
+
+        <div class="feature">
+            <strong>🌐 HTTP代理服务</strong><br>
+            <span id="proxy-feature-description">高性能HTTP/HTTPS代理服务器，支持Web浏览器代理。</span>
+            <span id="proxy-status" class="status-indicator loading">🔄 检查中...</span>
+            <div id="proxy-info" class="webdav-info hidden">
+                <strong>代理地址:</strong> <code id="proxy-address">localhost:10808</code><br>
+                <strong>支持协议:</strong> <span>HTTP, HTTPS</span><br>
+                <strong>连接方式:</strong> <span>CONNECT, GET, POST</span>
+            </div>
+        </div>
+
+        <div class="feature">
             <strong>📊 功能状态展示</strong><br>
-            默认页面实时显示服务器各项功能的启用状态，包括文件上传、WebDAV和HTTPS服务。
+            默认页面实时显示服务器各项功能的启用状态，包括文件上传、WebDAV、HTTPS和代理服务。
         </div>
 
         <div class="feature">
@@ -347,6 +381,8 @@ func generateEnhancedDefaultPageContent() string {
             <li>上传地址: <code>/upload</code></li>
             <li>文件浏览: <code>/files</code></li>
             <li>WebDAV地址: <code>/webdav</code></li>
+            <li>SOCKS5代理: <code>localhost:1080</code></li>
+            <li>HTTP代理: <code>localhost:10808</code></li>
         </ul>
 
         <h2>💡 使用说明</h2>
@@ -383,10 +419,13 @@ func generateEnhancedDefaultPageContent() string {
             <li>使用Go语言标准库开发，轻量级无外部依赖</li>
             <li>支持多部分表单数据上传</li>
             <li>完整的WebDAV协议支持（RFC 4918）</li>
+            <li>高性能SOCKS5代理服务器（RFC 1928）</li>
+            <li>HTTP/HTTPS代理服务器支持</li>
             <li>可配置的读写权限控制</li>
             <li>自动MIME类型检测</li>
             <li>UTF-8编码支持，完美处理中文</li>
             <li>跨平台兼容（Windows、Linux、macOS）</li>
+            <li>并发连接处理，高性能数据转发</li>
         </ul>
 
         <div class="footer">
@@ -417,7 +456,9 @@ func generateEnhancedDefaultPageContent() string {
                     updateFilesStatus(data.files);
                     updateWebDAVStatus(data.webdav);
                     updateHTTPSStatus(data.https);
-                    updateUsageInstructions(data.upload, data.files, data.webdav, data.https);
+                    updateSOCKS5Status(data.socks5);
+                    updateProxyStatus(data.proxy);
+                    updateUsageInstructions(data.upload, data.files, data.webdav, data.https, data.socks5, data.proxy);
                 })
                 .catch(error => {
                     console.error('检查服务状态失败:', error);
@@ -426,7 +467,9 @@ func generateEnhancedDefaultPageContent() string {
                     updateFilesStatus({enabled: false, status: 'disabled'});
                     updateWebDAVStatus({enabled: false, status: 'disabled'});
                     updateHTTPSStatus({enabled: false, status: 'disabled'});
-                    updateUsageInstructions({enabled: false}, {enabled: false}, {enabled: false}, {enabled: false});
+                    updateSOCKS5Status({enabled: false, status: 'disabled'});
+                    updateProxyStatus({enabled: false, status: 'disabled'});
+                    updateUsageInstructions({enabled: false}, {enabled: false}, {enabled: false}, {enabled: false}, {enabled: false}, {enabled: false});
                 });
         }
 
@@ -554,8 +597,54 @@ func generateEnhancedDefaultPageContent() string {
             }
         }
 
+        // 更新页面上的SOCKS5代理状态显示
+        function updateSOCKS5Status(socks5Data) {
+            const statusElement = document.getElementById('socks5-status');
+            const descriptionElement = document.getElementById('socks5-feature-description');
+            const socks5Info = document.getElementById('socks5-info');
+            const socks5Address = document.getElementById('socks5-address');
+
+            if (socks5Data.enabled) {
+                statusElement.textContent = '✅ 已启用';
+                statusElement.className = 'status-indicator status-enabled';
+                descriptionElement.textContent = 'SOCKS5代理服务已启用，支持高性能TCP连接代理。';
+
+                socks5Address.textContent = 'localhost:' + socks5Data.port;
+                socks5Info.classList.remove('hidden');
+            } else {
+                statusElement.textContent = '🔒 已禁用';
+                statusElement.className = 'status-indicator status-disabled';
+                descriptionElement.textContent = 'SOCKS5代理服务可通过命令行参数启用。';
+
+                socks5Info.classList.add('hidden');
+            }
+        }
+
+        // 更新页面上的HTTP代理状态显示
+        function updateProxyStatus(proxyData) {
+            const statusElement = document.getElementById('proxy-status');
+            const descriptionElement = document.getElementById('proxy-feature-description');
+            const proxyInfo = document.getElementById('proxy-info');
+            const proxyAddress = document.getElementById('proxy-address');
+
+            if (proxyData.enabled) {
+                statusElement.textContent = '✅ 已启用';
+                statusElement.className = 'status-indicator status-enabled';
+                descriptionElement.textContent = 'HTTP代理服务已启用，支持Web浏览器和HTTP客户端代理。';
+
+                proxyAddress.textContent = 'localhost:' + proxyData.port;
+                proxyInfo.classList.remove('hidden');
+            } else {
+                statusElement.textContent = '🔒 已禁用';
+                statusElement.className = 'status-indicator status-disabled';
+                descriptionElement.textContent = 'HTTP代理服务可通过命令行参数启用。';
+
+                proxyInfo.classList.add('hidden');
+            }
+        }
+
         // 更新使用说明和页脚
-        function updateUsageInstructions(uploadData, filesData, webdavData, httpsData) {
+        function updateUsageInstructions(uploadData, filesData, webdavData, httpsData, socks5Data, proxyData) {
             const usageUploadEnabled = document.getElementById('usage-upload-enabled');
             const usageWebdavEnabled = document.getElementById('usage-webdav-enabled');
             const usageDisabled = document.getElementById('usage-disabled');
@@ -565,7 +654,7 @@ func generateEnhancedDefaultPageContent() string {
             const footerUploadLink = document.getElementById('footer-upload-link');
             const footerWebdavLink = document.getElementById('footer-webdav-link');
 
-            const anyEnabled = uploadData.enabled || filesData.enabled || webdavData.enabled || httpsData.enabled;
+            const anyEnabled = uploadData.enabled || filesData.enabled || webdavData.enabled || httpsData.enabled || socks5Data.enabled || proxyData.enabled;
 
             if (anyEnabled) {
                 footerEnabled.classList.remove('hidden');

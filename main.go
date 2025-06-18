@@ -19,6 +19,10 @@ var (
 	httpsPort      int
 	certDir        string
 	filesEnabled   bool
+	socks5Enabled  bool
+	socks5Port     int
+	proxyEnabled   bool
+	proxyPort      int
 )
 
 func main() {
@@ -39,6 +43,12 @@ func main() {
 	flag.IntVar(&httpPort, "p", 8080, "指定HTTP服务器端口")
 	flag.IntVar(&httpsPort, "https-port", 8443, "指定HTTPS服务器端口")
 	flag.StringVar(&certDir, "cert-dir", "./cert", "SSL证书目录")
+	flag.BoolVar(&socks5Enabled, "socks5", false, "启用SOCKS5代理服务")
+	flag.BoolVar(&socks5Enabled, "enable-socks5", false, "启用SOCKS5代理服务")
+	flag.IntVar(&socks5Port, "socks5-port", 1080, "指定SOCKS5代理服务器端口")
+	flag.BoolVar(&proxyEnabled, "proxy", false, "启用HTTP代理服务")
+	flag.BoolVar(&proxyEnabled, "enable-proxy", false, "启用HTTP代理服务")
+	flag.IntVar(&proxyPort, "proxy-port", 10808, "指定HTTP代理服务器端口")
 	flag.BoolVar(&showHelp, "help", false, "显示帮助信息")
 	flag.BoolVar(&showHelp, "h", false, "显示帮助信息")
 
@@ -101,6 +111,28 @@ func main() {
 	} else {
 		http.HandleFunc("/webdav", webdavDisabledHandler)
 		fmt.Println("🔒 WebDAV服务已禁用 (使用 -webdav 参数启用)")
+	}
+
+	// 根据参数决定是否启用SOCKS5代理服务
+	if socks5Enabled {
+		if err := startSOCKS5Server(socks5Port); err != nil {
+			log.Fatalf("启动SOCKS5代理服务失败: %v", err)
+		}
+		fmt.Printf("✅ SOCKS5代理服务已启用 - 端口: %d\n", socks5Port)
+	} else {
+		http.HandleFunc("/socks5", socks5DisabledHandler)
+		fmt.Println("🔒 SOCKS5代理服务已禁用 (使用 -socks5 参数启用)")
+	}
+
+	// 根据参数决定是否启用HTTP代理服务
+	if proxyEnabled {
+		if err := startHTTPProxyServer(proxyPort); err != nil {
+			log.Fatalf("启动HTTP代理服务失败: %v", err)
+		}
+		fmt.Printf("✅ HTTP代理服务已启用 - 端口: %d\n", proxyPort)
+	} else {
+		http.HandleFunc("/proxy", httpProxyDisabledHandler)
+		fmt.Println("🔒 HTTP代理服务已禁用 (使用 -proxy 参数启用)")
 	}
 
 	// 启动服务器

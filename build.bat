@@ -3,7 +3,7 @@ SETLOCAL
 
 :: Define project name and source files
 SET PROJECT_NAME=sweb
-SET SOURCE_FILES=./main.go ./upload.go ./files.go ./webdav.go ./server.go ./utils.go
+SET SOURCE_FILES=./main.go ./upload.go ./files.go ./webdav.go ./server.go ./utils.go ./socks5.go ./proxy.go
 :: NOTE: All Go files in the main package need to be included for compilation
 
 SET BUILD_DIR=.\bin

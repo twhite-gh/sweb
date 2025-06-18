@@ -74,8 +74,14 @@
 # 启用HTTPS服务
 ./sweb.exe -https
 
+# 启用SOCKS5代理服务
+./sweb.exe -socks5
+
+# 启用HTTP代理服务
+./sweb.exe -proxy
+
 # 启用所有功能
-./sweb.exe -upload -files -webdav -https
+./sweb.exe -upload -files -webdav -https -socks5 -proxy
 
 # 指定端口
 ./sweb.exe -port 9000
@@ -94,8 +100,12 @@
 | `--webdav-dir` | | WebDAV服务的根目录 | 当前目录 |
 | `--webdav-readonly` | | WebDAV服务只读模式 | 读写模式 |
 | `--https` | | 启用HTTPS服务 | 禁用 |
-| `--http-port` | | HTTP服务器端口 | 8080 |
+| `--enable-socks5` | `-socks5` | 启用SOCKS5代理服务 | 禁用 |
+| `--enable-proxy` | `-proxy` | 启用HTTP代理服务 | 禁用 |
+| `--port` | `-p` | HTTP服务器端口 | 8080 |
 | `--https-port` | | HTTPS服务器端口 | 8443 |
+| `--socks5-port` | | SOCKS5代理端口 | 1080 |
+| `--proxy-port` | | HTTP代理端口 | 10808 |
 | `--cert-dir` | | SSL证书目录 | ./cert |
 | `--help` | `-h` | 显示帮助信息 | |
 
@@ -186,14 +196,99 @@ sudo mount -t davfs http://localhost:8080/webdav /mnt/webdav
 openssl req -x509 -newkey rsa:4096 -keyout cert/server.key -out cert/server.crt -days 365 -nodes
 ```
 
+## 🔌 SOCKS5代理使用指南
+
+### 启用SOCKS5代理服务
+
+```bash
+# 启用SOCKS5代理服务
+./sweb.exe -socks5
+
+# 指定自定义端口
+./sweb.exe -socks5 -socks5-port 1080
+
+# 与其他功能一起使用
+./sweb.exe -socks5 -upload -files
+```
+
+### 客户端配置
+
+#### 浏览器配置
+1. **Chrome/Edge**: 设置 → 高级 → 系统 → 打开代理设置
+2. **Firefox**: 设置 → 网络设置 → 手动代理配置
+3. 配置SOCKS5代理：`localhost:1080`
+
+#### 系统代理配置
+```bash
+# Windows (PowerShell)
+netsh winhttp set proxy proxy-server="socks=localhost:1080" bypass-list="localhost;127.*"
+
+# Linux (使用proxychains)
+echo "socks5 127.0.0.1 1080" >> /etc/proxychains.conf
+
+# macOS (网络偏好设置)
+# 系统偏好设置 → 网络 → 高级 → 代理 → SOCKS代理
+```
+
+### 功能特性
+- **高性能**: 基于Go协程的并发处理
+- **标准协议**: 完整支持SOCKS5协议（RFC 1928）
+- **无认证**: 简化配置，适合内网使用
+- **IPv4/IPv6**: 支持双栈网络
+- **域名解析**: 支持远程域名解析
+
+## 🌐 HTTP代理使用指南
+
+### 启用HTTP代理服务
+
+```bash
+# 启用HTTP代理服务
+./sweb.exe -proxy
+
+# 指定自定义端口
+./sweb.exe -proxy -proxy-port 10808
+
+# 与其他功能一起使用
+./sweb.exe -proxy -https -webdav
+```
+
+### 客户端配置
+
+#### 浏览器配置
+1. 在浏览器代理设置中配置HTTP代理
+2. 代理服务器：`localhost`
+3. 端口：`10808`（或自定义端口）
+
+#### 命令行工具配置
+```bash
+# curl使用HTTP代理
+curl --proxy http://localhost:10808 https://example.com
+
+# wget使用HTTP代理
+wget --proxy=on --http-proxy=localhost:10808 https://example.com
+
+# 设置环境变量
+export http_proxy=http://localhost:10808
+export https_proxy=http://localhost:10808
+```
+
+### 功能特性
+- **HTTP/HTTPS支持**: 同时支持HTTP和HTTPS协议
+- **CONNECT方法**: 支持HTTPS隧道代理
+- **高并发**: 基于Go协程的高性能处理
+- **透明代理**: 完整转发HTTP头部信息
+- **错误处理**: 完善的错误处理和日志记录
+
 ## 🛠️ 技术特性
 
 - **语言**: Go语言
 - **依赖**: 最小化外部依赖，主要使用标准库
-- **协议**: HTTP/1.1, WebDAV RFC 4918
+- **协议**: HTTP/1.1, WebDAV RFC 4918, SOCKS5 RFC 1928
+- **代理**: 高性能SOCKS5和HTTP/HTTPS代理服务器
 - **编码**: UTF-8支持，完美处理中文
 - **平台**: 跨平台兼容（Windows、Linux、macOS）
 - **架构**: 轻量级，单文件部署
+- **并发**: 基于协程的高并发处理
 
 ## 📊 实时状态监控
 
@@ -227,6 +322,28 @@ openssl req -x509 -newkey rsa:4096 -keyout cert/server.key -out cert/server.crt 
     "httpsPort": 8443,
     "certDir": "./cert",
     "certStatus": "enabled"
+  },
+  "socks5": {
+    "enabled": true,
+    "status": "running",
+    "port": 1080,
+    "totalConnections": 25,
+    "activeConnections": 3,
+    "successfulConnections": 22,
+    "failedConnections": 0,
+    "bytesTransferred": 1048576
+  },
+  "proxy": {
+    "enabled": true,
+    "status": "running",
+    "port": 10808,
+    "totalConnections": 15,
+    "activeConnections": 2,
+    "successfulConnections": 13,
+    "failedConnections": 0,
+    "httpRequests": 8,
+    "httpsRequests": 5,
+    "bytesTransferred": 2097152
   }
 }
 ```
@@ -238,11 +355,14 @@ openssl req -x509 -newkey rsa:4096 -keyout cert/server.key -out cert/server.crt 
 - 文件浏览功能默认**禁用**
 - WebDAV服务默认**禁用**
 - HTTPS服务默认**禁用**
+- SOCKS5代理服务默认**禁用**
+- HTTP代理服务默认**禁用**
 - 需要通过命令行参数明确启用高级功能
 
 ### 权限控制
 - WebDAV支持只读模式
 - 可限制WebDAV访问目录范围
+- 代理服务无认证机制，仅适用于可信网络
 - 建议在可信网络环境中使用
 
 ### 最佳实践
@@ -251,10 +371,16 @@ openssl req -x509 -newkey rsa:4096 -keyout cert/server.key -out cert/server.crt 
 ./sweb.exe -webdav -webdav-readonly -webdav-dir /safe/directory -https
 
 # 开发环境配置（启用所有功能）
-./sweb.exe -upload -files -webdav -https
+./sweb.exe -upload -files -webdav -https -socks5 -proxy
 
 # 文件共享配置（只启用文件浏览）
 ./sweb.exe -files
+
+# 代理服务器配置（仅代理功能）
+./sweb.exe -socks5 -proxy
+
+# 内网代理配置（指定端口）
+./sweb.exe -socks5 -socks5-port 1080 -proxy -proxy-port 8080
 ```
 
 ## 📁 目录结构
@@ -262,10 +388,20 @@ openssl req -x509 -newkey rsa:4096 -keyout cert/server.key -out cert/server.crt 
 ```
 sweb/
 ├── main.go                 # 主程序文件
+├── upload.go               # 文件上传模块
+├── files.go                # 文件浏览模块
+├── webdav.go               # WebDAV服务模块
+├── server.go               # HTTP/HTTPS服务器模块
+├── utils.go                # 工具函数和页面生成
+├── socks5.go               # SOCKS5代理服务器模块
+├── proxy.go                # HTTP代理服务器模块
 ├── go.mod                  # Go模块文件
 ├── go.sum                  # 依赖校验文件
+├── Makefile                # 构建脚本（Linux/macOS）
+├── build.bat               # 构建脚本（Windows）
 ├── README.md               # 项目说明
 ├── WebDAV使用说明.md       # WebDAV详细说明
+├── HTTPS功能说明.md        # HTTPS功能说明
 ├── web/                    # Web文件目录（自动创建）
 │   └── index.html          # 默认主页（自动生成）
 ├── cert/                   # SSL证书目录（HTTPS功能需要）
@@ -285,6 +421,10 @@ sweb/
 - **文件备份**: 作为简单的文件上传服务
 - **团队协作**: 通过文件浏览功能快速查看和下载文件
 - **安全传输**: 使用HTTPS确保文件传输安全
+- **网络代理**: 提供SOCKS5和HTTP代理服务
+- **内网穿透**: 在受限网络环境中提供代理访问
+- **开发调试**: 通过代理服务器调试网络请求
+- **流量转发**: 高性能的TCP和HTTP流量转发
 
 ## 🤝 贡献指南
 
@@ -308,10 +448,11 @@ sweb/
 ## 📸 功能截图
 
 ### 主页界面
-- 实时显示所有功能状态（上传、文件浏览、WebDAV、HTTPS）
+- 实时显示所有功能状态（上传、文件浏览、WebDAV、HTTPS、SOCKS5、HTTP代理）
 - 响应式设计，支持移动设备
 - 中文界面，操作简单
 - 动态按钮状态，根据功能启用情况显示
+- 代理服务状态和统计信息展示
 
 ### 文件浏览页面
 - 网格布局展示文件，支持文件类型图标
@@ -344,18 +485,26 @@ require (
 
 ### 编译命令
 ```bash
-# 当前平台
-go build -o sweb main.go
+# 使用Makefile（推荐）
+make all                    # 编译所有平台
+make windows               # 仅编译Windows版本
+make linux                 # 仅编译Linux版本
+
+# 使用build.bat（Windows）
+build.bat                  # 编译Windows和Linux版本
+
+# 手动编译（包含所有源文件）
+go build -o sweb main.go upload.go files.go webdav.go server.go utils.go socks5.go proxy.go
 
 # 交叉编译
 # Windows
-GOOS=windows GOARCH=amd64 go build -o sweb.exe main.go
+GOOS=windows GOARCH=amd64 go build -o sweb.exe main.go upload.go files.go webdav.go server.go utils.go socks5.go proxy.go
 
 # Linux
-GOOS=linux GOARCH=amd64 go build -o sweb main.go
+GOOS=linux GOARCH=amd64 go build -o sweb main.go upload.go files.go webdav.go server.go utils.go socks5.go proxy.go
 
 # macOS
-GOOS=darwin GOARCH=amd64 go build -o sweb main.go
+GOOS=darwin GOARCH=amd64 go build -o sweb main.go upload.go files.go webdav.go server.go utils.go socks5.go proxy.go
 ```
 
 ## 🐛 故障排除
@@ -396,34 +545,58 @@ netstat -an | grep :8080
 - 检查客户端的编码设置
 - 确保文件系统支持Unicode
 
+#### 7. SOCKS5代理连接失败
+- 确认SOCKS5代理功能已启用（使用`-socks5`参数）
+- 检查端口是否被占用：`netstat -an | grep :1080`
+- 确认客户端SOCKS5配置正确
+- 检查防火墙是否阻止连接
+
+#### 8. HTTP代理无法访问网站
+- 确认HTTP代理功能已启用（使用`-proxy`参数）
+- 检查端口是否被占用：`netstat -an | grep :10808`
+- 确认浏览器代理设置正确
+- 检查目标网站是否可访问
+
 ### 日志调试
 服务器会输出详细的操作日志，包括：
 - 功能启用/禁用状态
 - WebDAV操作记录
 - 文件上传状态
 - HTTPS证书状态
-- 错误信息
+- SOCKS5代理连接和数据转发
+- HTTP代理请求处理
+- 错误信息和性能统计
 
 ## 🔄 版本历史
 
-### v1.0.0 (当前版本)
+### v2.0.0 (当前版本)
 - ✅ 基础静态文件服务
 - ✅ 拖拽多文件上传功能（带进度条）
 - ✅ 专门的文件浏览页面
 - ✅ 完整WebDAV协议支持
 - ✅ HTTPS加密连接支持
-- ✅ 实时状态监控
+- ✅ 高性能SOCKS5代理服务器
+- ✅ HTTP/HTTPS代理服务器
+- ✅ 实时状态监控和统计
 - ✅ 响应式Web界面
 - ✅ 命令行参数配置
 - ✅ 安全默认策略
+- ✅ 模块化代码结构
+
+### v1.0.0
+- ✅ 基础文件服务功能
+- ✅ WebDAV和HTTPS支持
+- ✅ Web界面和状态监控
 
 ### 计划功能
 - [ ] 用户认证和权限管理
+- [ ] 代理服务认证机制
 - [ ] 文件预览功能
 - [ ] 批量文件操作
 - [ ] 配置文件支持
 - [ ] 文件搜索功能
 - [ ] 文件版本管理
+- [ ] 代理服务访问控制
 
 ## 📞 联系方式
 
