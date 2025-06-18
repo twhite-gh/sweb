@@ -1,4 +1,148 @@
-<!DOCTYPE html>
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+)
+
+// createDefaultPageIfNeeded 检查并创建默认页面
+func createDefaultPageIfNeeded(webDir string, uploadEnabled bool) {
+	// 检查是否存在默认页面
+	indexFiles := []string{"index.html", "index.htm"}
+	hasDefaultPage := false
+
+	for _, indexFile := range indexFiles {
+		indexPath := filepath.Join(webDir, indexFile)
+		if _, err := os.Stat(indexPath); err == nil {
+			hasDefaultPage = true
+			break
+		}
+	}
+
+	// 如果没有默认页面，创建一个
+	if !hasDefaultPage {
+		indexPath := filepath.Join(webDir, "index.html")
+		indexContent := generateEnhancedDefaultPageContent()
+
+		err := os.WriteFile(indexPath, []byte(indexContent), 0644)
+		if err != nil {
+			log.Printf("警告：无法创建默认页面: %v", err)
+		} else {
+			fmt.Println("已创建默认页面: index.html (支持上传和WebDAV状态检查)")
+		}
+	}
+}
+
+// statusHandler 处理状态查询请求
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	response := map[string]interface{}{
+		"upload": map[string]interface{}{
+			"enabled": uploadEnabled,
+			"status": func() string {
+				if uploadEnabled {
+					return "enabled"
+				}
+				return "disabled"
+			}(),
+		},
+		"files": map[string]interface{}{
+			"enabled": filesEnabled,
+			"status": func() string {
+				if filesEnabled {
+					return "enabled"
+				}
+				return "disabled"
+			}(),
+		},
+		"webdav": map[string]interface{}{
+			"enabled":   webdavEnabled,
+			"readonly":  webdavReadonly,
+			"directory": webdavDir,
+			"status": func() string {
+				if webdavEnabled {
+					if webdavReadonly {
+						return "enabled-readonly"
+					}
+					return "enabled-readwrite"
+				}
+				return "disabled"
+			}(),
+		},
+		"https": map[string]interface{}{
+			"enabled":   httpsEnabled,
+			"httpPort":  httpPort,
+			"httpsPort": httpsPort,
+			"certDir":   certDir,
+			"certStatus": func() string {
+				if !httpsEnabled {
+					return "disabled"
+				}
+				if err := checkCertificates(); err != nil {
+					return "cert-error"
+				}
+				return "enabled"
+			}(),
+		},
+	}
+
+	json.NewEncoder(w).Encode(response)
+}
+
+// showHelpInfo 显示帮助信息
+func showHelpInfo() {
+	fmt.Println("简单Web文件服务器 - 基于Go语言开发")
+	fmt.Println()
+	fmt.Println("用法:")
+	fmt.Println("  sweb.exe [选项]")
+	fmt.Println()
+	fmt.Println("选项:")
+	fmt.Println("  -upload, --enable-upload    启用文件上传功能 (默认: 禁用)")
+	fmt.Println("  -files, --enable-files      启用文件浏览功能 (默认: 禁用)")
+	fmt.Println("  -webdav, --enable-webdav    启用WebDAV服务 (默认: 禁用)")
+	fmt.Println("  -webdav-dir <目录>          WebDAV服务的根目录 (默认: 当前目录)")
+	fmt.Println("  -webdav-readonly            WebDAV服务只读模式 (默认: 读写)")
+	fmt.Println("  -https, --enable-https      启用HTTPS服务 (默认: 禁用)")
+	fmt.Println("  -port, -p <端口>           指定HTTP服务器端口 (默认: 8080)")
+	fmt.Println("  -https-port <端口>         指定HTTPS服务器端口 (默认: 8443)")
+	fmt.Println("  -cert-dir <目录>           SSL证书目录 (默认: ./cert)")
+	fmt.Println("  -help, -h                  显示此帮助信息")
+	fmt.Println()
+	fmt.Println("示例:")
+	fmt.Println("  sweb.exe                           # 启动HTTP服务器，仅提供静态文件服务")
+	fmt.Println("  sweb.exe -upload                   # 启动服务器并启用文件上传功能")
+	fmt.Println("  sweb.exe -files                    # 启动服务器并启用文件浏览功能")
+	fmt.Println("  sweb.exe -https                    # 启动HTTP和HTTPS服务器")
+	fmt.Println("  sweb.exe -webdav                   # 启动服务器并启用WebDAV服务")
+	fmt.Println("  sweb.exe -webdav -webdav-readonly  # 启动只读WebDAV服务")
+	fmt.Println("  sweb.exe -webdav -webdav-dir /data # 指定WebDAV目录")
+	fmt.Println("  sweb.exe -upload -files -webdav -https # 启用所有功能")
+	fmt.Println("  sweb.exe -https -https-port 9443   # 指定HTTPS端口")
+	fmt.Println()
+	fmt.Println("HTTPS证书:")
+	fmt.Println("  证书文件: ./cert/server.crt")
+	fmt.Println("  私钥文件: ./cert/server.key")
+	fmt.Println("  可以使用openssl生成自签名证书用于测试")
+	fmt.Println()
+	fmt.Println("访问地址:")
+	fmt.Println("  HTTP: http://localhost:8080")
+	fmt.Println("  HTTPS: https://localhost:8443 (如果启用)")
+	fmt.Println("  WebDAV: http://localhost:8080/webdav")
+	fmt.Println()
+	fmt.Println("安全说明:")
+	fmt.Println("  文件上传、文件浏览、WebDAV和HTTPS功能默认禁用以确保服务器安全。")
+	fmt.Println("  只有在明确需要时才使用相应参数启用。")
+}
+
+// generateEnhancedDefaultPageContent 生成包含WebDAV功能的增强版默认页面
+func generateEnhancedDefaultPageContent() string {
+	return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -467,4 +611,5 @@
         });
     </script>
 </body>
-</html>
+</html>`
+}
