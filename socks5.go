@@ -204,23 +204,44 @@ func (s *SOCKS5Server) handleAuthentication(conn net.Conn) error {
 		return fmt.Errorf("读取认证请求失败: %v", err)
 	}
 
-	if n < 3 || buf[0] != SOCKS5_VERSION {
-		return fmt.Errorf("无效的SOCKS5版本")
+	// 添加详细的调试信息
+	log.Printf("SOCKS5认证请求: 接收到 %d 字节数据: %v", n, buf[:n])
+
+	// 检查最小数据长度
+	if n < 2 {
+		return fmt.Errorf("认证请求数据太短: %d 字节", n)
 	}
 
-	nmethods := int(buf[1])
-	if n < 2+nmethods {
-		return fmt.Errorf("认证方法数据不完整")
+	// 检查SOCKS版本
+	version := buf[0]
+	if version != SOCKS5_VERSION {
+		return fmt.Errorf("无效的SOCKS5版本: 期望 %d, 收到 %d", SOCKS5_VERSION, version)
 	}
+
+	// 检查认证方法数量
+	nmethods := int(buf[1])
+	if nmethods == 0 {
+		return fmt.Errorf("认证方法数量为0")
+	}
+
+	if n < 2+nmethods {
+		return fmt.Errorf("认证方法数据不完整: 期望 %d 字节, 收到 %d 字节", 2+nmethods, n)
+	}
+
+	log.Printf("SOCKS5认证: 版本=%d, 方法数量=%d", version, nmethods)
 
 	// 检查支持的认证方法（目前只支持无认证）
 	supportedMethod := AUTH_NO_ACCEPTABLE
 	for i := 0; i < nmethods; i++ {
-		if buf[2+i] == AUTH_NO_AUTH {
+		method := buf[2+i]
+		log.Printf("SOCKS5认证: 客户端支持方法 %d", method)
+		if method == AUTH_NO_AUTH {
 			supportedMethod = AUTH_NO_AUTH
 			break
 		}
 	}
+
+	log.Printf("SOCKS5认证: 选择的认证方法 %d", supportedMethod)
 
 	// 发送认证方法选择响应
 	response := []byte{SOCKS5_VERSION, byte(supportedMethod)}
@@ -233,6 +254,7 @@ func (s *SOCKS5Server) handleAuthentication(conn net.Conn) error {
 		return fmt.Errorf("不支持的认证方法")
 	}
 
+	log.Printf("SOCKS5认证: 认证协商成功")
 	return nil
 }
 
@@ -245,9 +267,21 @@ func (s *SOCKS5Server) handleRequest(conn net.Conn) error {
 		return fmt.Errorf("读取连接请求失败: %v", err)
 	}
 
-	if n < 7 || buf[0] != SOCKS5_VERSION {
+	// 添加详细的调试信息
+	debugLen := n
+	if debugLen > 20 {
+		debugLen = 20
+	}
+	log.Printf("SOCKS5连接请求: 接收到 %d 字节数据: %v", n, buf[:debugLen])
+
+	if n < 4 {
 		s.sendErrorResponse(conn, REP_GENERAL_FAILURE)
-		return fmt.Errorf("无效的SOCKS5请求")
+		return fmt.Errorf("连接请求数据太短: %d 字节", n)
+	}
+
+	if buf[0] != SOCKS5_VERSION {
+		s.sendErrorResponse(conn, REP_GENERAL_FAILURE)
+		return fmt.Errorf("无效的SOCKS5请求版本: 期望 %d, 收到 %d", SOCKS5_VERSION, buf[0])
 	}
 
 	cmd := buf[1]

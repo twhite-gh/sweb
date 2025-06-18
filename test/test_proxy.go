@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -52,8 +53,16 @@ func testHTTPProxy() {
 	}
 	fmt.Println("✅ HTTP客户端测试成功")
 
-	// 5. 测试并发请求
-	fmt.Println("5. 测试并发请求...")
+	// 5. 测试HTTPS代理功能
+	fmt.Println("5. 测试HTTPS代理功能...")
+	if err := testHTTPSProxyWithClient(proxyAddr); err != nil {
+		fmt.Printf("❌ HTTPS代理测试失败: %v\n", err)
+		return
+	}
+	fmt.Println("✅ HTTPS代理测试成功")
+
+	// 6. 测试并发请求
+	fmt.Println("6. 测试并发请求...")
 	if err := testHTTPProxyConcurrent(proxyAddr); err != nil {
 		fmt.Printf("❌ 并发测试失败: %v\n", err)
 		return
@@ -200,6 +209,61 @@ func testHTTPClientWithProxy(proxyAddr string) error {
 	fmt.Printf("   客户端响应状态: %s\n", resp.Status)
 	fmt.Printf("   客户端响应内容预览: %s\n", string(body[:min(n, 100)]))
 
+	return nil
+}
+
+// testHTTPSProxyWithClient 测试HTTPS代理功能
+func testHTTPSProxyWithClient(proxyAddr string) error {
+	// 创建代理URL
+	proxyURL, err := url.Parse("http://" + proxyAddr)
+	if err != nil {
+		return fmt.Errorf("解析代理URL失败: %v", err)
+	}
+
+	// 创建HTTP客户端使用代理
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+			// 跳过SSL验证以便测试
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		Timeout: 15 * time.Second,
+	}
+
+	// 测试HTTPS网站列表
+	httpsUrls := []string{
+		"https://www.baidu.com",
+		"https://httpbin.org/ip",
+		"https://www.google.com",
+	}
+
+	successCount := 0
+	for i, testUrl := range httpsUrls {
+		fmt.Printf("   测试HTTPS站点 %d: %s\n", i+1, testUrl)
+
+		resp, err := client.Get(testUrl)
+		if err != nil {
+			fmt.Printf("   ⚠️  HTTPS请求失败: %v\n", err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == 200 {
+			// 读取响应内容（限制大小）
+			body := make([]byte, 512)
+			n, _ := resp.Body.Read(body)
+			fmt.Printf("   ✅ HTTPS响应成功 (状态: %s, 内容: %d 字节)\n", resp.Status, n)
+			successCount++
+		} else {
+			fmt.Printf("   ⚠️  HTTPS响应状态码: %d\n", resp.StatusCode)
+		}
+	}
+
+	if successCount == 0 {
+		return fmt.Errorf("所有HTTPS测试都失败了")
+	}
+
+	fmt.Printf("   HTTPS代理测试成功: %d/%d 个站点可访问\n", successCount, len(httpsUrls))
 	return nil
 }
 

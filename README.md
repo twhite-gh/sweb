@@ -387,29 +387,42 @@ export https_proxy=http://localhost:10808
 
 ```
 sweb/
-├── main.go                 # 主程序文件
-├── upload.go               # 文件上传模块
-├── files.go                # 文件浏览模块
-├── webdav.go               # WebDAV服务模块
-├── server.go               # HTTP/HTTPS服务器模块
-├── utils.go                # 工具函数和页面生成
-├── socks5.go               # SOCKS5代理服务器模块
-├── proxy.go                # HTTP代理服务器模块
-├── go.mod                  # Go模块文件
-├── go.sum                  # 依赖校验文件
-├── Makefile                # 构建脚本（Linux/macOS）
-├── build.bat               # 构建脚本（Windows）
-├── README.md               # 项目说明
-├── WebDAV使用说明.md       # WebDAV详细说明
-├── HTTPS功能说明.md        # HTTPS功能说明
-├── web/                    # Web文件目录（自动创建）
-│   └── index.html          # 默认主页（自动生成）
-├── cert/                   # SSL证书目录（HTTPS功能需要）
-│   ├── server.crt          # SSL证书文件
-│   └── server.key          # SSL私钥文件
-└── test-webdav/           # WebDAV测试目录
-    ├── readme.txt
-    └── sample.json
+├── main.go                     # 主程序入口文件
+├── upload.go                   # 文件上传功能模块
+├── files.go                    # 文件浏览功能模块
+├── webdav.go                   # WebDAV服务模块
+├── server.go                   # HTTP/HTTPS服务器模块
+├── utils.go                    # 工具函数和页面生成
+├── socks5.go                   # SOCKS5代理服务器模块
+├── proxy.go                    # HTTP代理服务器模块
+├── go.mod                      # Go模块文件
+├── go.sum                      # 依赖校验文件
+├── Makefile                    # 构建脚本（Linux/macOS）
+├── build.bat                   # 构建脚本（Windows）
+├── README.md                   # 项目说明
+├── 项目结构说明.md             # 项目结构详细说明
+├── HTTPS代理配置指南.md        # HTTPS代理配置指南
+├── HTTPS功能说明.md            # HTTPS功能说明
+├── WebDAV使用说明.md           # WebDAV详细说明
+├── 测试说明.md                 # 测试说明文档
+├── 浏览器配置说明.md           # 浏览器配置说明
+├── bin/                        # 编译输出目录
+│   ├── windows/                # Windows可执行文件
+│   └── linux/                  # Linux可执行文件
+├── cert/                       # SSL证书目录（HTTPS功能需要）
+│   ├── server.crt              # SSL证书文件
+│   └── server.key              # SSL私钥文件
+├── test/                       # 测试代码目录
+│   ├── test_all.bat            # Windows完整测试套件
+│   ├── test_all.sh             # Linux/macOS完整测试套件
+│   ├── test_all.go             # 综合功能测试
+│   ├── test_socks5.go          # SOCKS5代理测试
+│   ├── test_proxy.go           # HTTP代理测试
+│   └── debug_socks5.go         # SOCKS5调试工具
+├── tools/                      # 工具目录
+│   └── generate-cert.go        # SSL证书生成工具
+└── web/                        # Web文件目录（自动创建）
+    └── index.html              # 默认主页（自动生成）
 ```
 
 ## 🎯 使用场景
@@ -505,6 +518,25 @@ GOOS=linux GOARCH=amd64 go build -o sweb main.go upload.go files.go webdav.go se
 
 # macOS
 GOOS=darwin GOARCH=amd64 go build -o sweb main.go upload.go files.go webdav.go server.go utils.go socks5.go proxy.go
+```
+
+### 运行测试
+```bash
+# 进入测试目录
+cd test
+
+# Windows - 运行完整测试套件
+test_all.bat
+
+# Linux/macOS - 运行完整测试套件
+chmod +x test_all.sh
+./test_all.sh
+
+# 单独运行测试
+go run test_all.go          # 综合功能测试
+go run test_socks5.go       # SOCKS5代理测试
+go run test_proxy.go        # HTTP代理测试
+go run debug_socks5.go      # SOCKS5调试工具
 ```
 
 ## 🐛 故障排除
