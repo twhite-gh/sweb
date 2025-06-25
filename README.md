@@ -53,7 +53,16 @@
    ```bash
    git clone <repository-url>
    cd sweb
-   go build -o sweb.exe main.go
+
+   # 使用构建脚本编译所有平台
+   # Windows
+   build.bat
+
+   # Linux/macOS
+   make all
+
+   # 或手动编译（包含所有源文件）
+   go build -o sweb.exe ./src/main.go ./src/upload.go ./src/files.go ./src/webdav.go ./src/server.go ./src/utils.go ./src/socks5.go ./src/proxy.go
    ```
 
 ### 基本使用
@@ -287,8 +296,13 @@ export https_proxy=http://localhost:10808
 - **代理**: 高性能SOCKS5和HTTP/HTTPS代理服务器
 - **编码**: UTF-8支持，完美处理中文
 - **平台**: 跨平台兼容（Windows、Linux、macOS）
-- **架构**: 轻量级，单文件部署
+- **架构支持**:
+  - Windows: 32位(386)、64位(amd64)
+  - Linux: 32位(386)、64位(amd64)
+  - macOS: Intel(amd64)、Apple Silicon(arm64)
+- **部署**: 轻量级，单文件部署
 - **并发**: 基于协程的高并发处理
+- **构建**: 支持交叉编译，一次构建多平台
 
 ## 📊 实时状态监控
 
@@ -387,42 +401,47 @@ export https_proxy=http://localhost:10808
 
 ```
 sweb/
-├── main.go                     # 主程序入口文件
-├── upload.go                   # 文件上传功能模块
-├── files.go                    # 文件浏览功能模块
-├── webdav.go                   # WebDAV服务模块
-├── server.go                   # HTTP/HTTPS服务器模块
-├── utils.go                    # 工具函数和页面生成
-├── socks5.go                   # SOCKS5代理服务器模块
-├── proxy.go                    # HTTP代理服务器模块
-├── go.mod                      # Go模块文件
-├── go.sum                      # 依赖校验文件
-├── Makefile                    # 构建脚本（Linux/macOS）
-├── build.bat                   # 构建脚本（Windows）
-├── README.md                   # 项目说明
-├── 项目结构说明.md             # 项目结构详细说明
-├── HTTPS代理配置指南.md        # HTTPS代理配置指南
-├── HTTPS功能说明.md            # HTTPS功能说明
-├── WebDAV使用说明.md           # WebDAV详细说明
-├── 测试说明.md                 # 测试说明文档
-├── 浏览器配置说明.md           # 浏览器配置说明
-├── bin/                        # 编译输出目录
-│   ├── windows/                # Windows可执行文件
-│   └── linux/                  # Linux可执行文件
-├── cert/                       # SSL证书目录（HTTPS功能需要）
-│   ├── server.crt              # SSL证书文件
-│   └── server.key              # SSL私钥文件
+├── src/                        # 源代码目录
+│   ├── main.go                 # 主程序入口文件
+│   ├── upload.go               # 文件上传功能模块
+│   ├── files.go                # 文件浏览功能模块
+│   ├── webdav.go               # WebDAV服务模块
+│   ├── server.go               # HTTP/HTTPS服务器模块
+│   ├── utils.go                # 工具函数和页面生成
+│   ├── socks5.go               # SOCKS5代理服务器模块
+│   └── proxy.go                # HTTP代理服务器模块
 ├── test/                       # 测试代码目录
 │   ├── test_all.bat            # Windows完整测试套件
 │   ├── test_all.sh             # Linux/macOS完整测试套件
 │   ├── test_all.go             # 综合功能测试
 │   ├── test_socks5.go          # SOCKS5代理测试
 │   ├── test_proxy.go           # HTTP代理测试
-│   └── debug_socks5.go         # SOCKS5调试工具
+│   ├── debug_socks5.go         # SOCKS5调试工具
+│   └── README.md               # 测试说明文档
+├── doc/                        # 文档目录
+│   ├── 项目结构说明.md         # 项目结构详细说明
+│   ├── HTTPS代理配置指南.md    # HTTPS代理配置指南
+│   ├── HTTPS功能说明.md        # HTTPS功能说明
+│   ├── WebDAV使用说明.md       # WebDAV详细说明
+│   ├── 测试说明.md             # 测试说明文档
+│   ├── 浏览器配置说明.md       # 浏览器配置说明
+│   └── 目录重构完成说明.md     # 目录重构说明
 ├── tools/                      # 工具目录
 │   └── generate-cert.go        # SSL证书生成工具
-└── web/                        # Web文件目录（自动创建）
-    └── index.html              # 默认主页（自动生成）
+├── bin/                        # 编译输出目录
+│   ├── windows/                # Windows可执行文件
+│   ├── linux/                  # Linux可执行文件
+│   └── macos/                  # macOS可执行文件
+├── cert/                       # SSL证书目录（HTTPS功能需要）
+│   ├── server.crt              # SSL证书文件
+│   └── server.key              # SSL私钥文件
+├── web/                        # Web文件目录（自动创建）
+│   └── index.html              # 默认主页（自动生成）
+├── go.mod                      # Go模块文件
+├── go.sum                      # 依赖校验文件
+├── Makefile                    # 构建脚本（Linux/macOS）
+├── build.bat                   # 构建脚本（Windows）
+└── README.md                   # 项目说明
 ```
 
 ## 🎯 使用场景
@@ -499,25 +518,43 @@ require (
 ### 编译命令
 ```bash
 # 使用Makefile（推荐）
-make all                    # 编译所有平台
-make windows               # 仅编译Windows版本
-make linux                 # 仅编译Linux版本
+make all                    # 编译所有平台（Windows、Linux、macOS）
+make windows               # 仅编译Windows版本（64位和32位）
+make linux                 # 仅编译Linux版本（64位和32位）
+make macos                 # 仅编译macOS版本（Intel和Apple Silicon）
+
+# 单独编译特定架构
+make windows-64            # Windows 64位
+make windows-32            # Windows 32位
+make linux-64              # Linux 64位
+make linux-32              # Linux 32位
+make macos-intel           # macOS Intel
+make macos-arm64           # macOS Apple Silicon
 
 # 使用build.bat（Windows）
-build.bat                  # 编译Windows和Linux版本
+build.bat                  # 编译所有平台版本
 
 # 手动编译（包含所有源文件）
-go build -o sweb main.go upload.go files.go webdav.go server.go utils.go socks5.go proxy.go
+go build -o sweb ./src/main.go ./src/upload.go ./src/files.go ./src/webdav.go ./src/server.go ./src/utils.go ./src/socks5.go ./src/proxy.go
 
-# 交叉编译
-# Windows
-GOOS=windows GOARCH=amd64 go build -o sweb.exe main.go upload.go files.go webdav.go server.go utils.go socks5.go proxy.go
+# 交叉编译示例
+# Windows 64位
+GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o bin/windows/sweb-windows-amd64.exe ./src/*.go
 
-# Linux
-GOOS=linux GOARCH=amd64 go build -o sweb main.go upload.go files.go webdav.go server.go utils.go socks5.go proxy.go
+# Windows 32位
+GOOS=windows GOARCH=386 go build -ldflags "-s -w" -o bin/windows/sweb-windows-386.exe ./src/*.go
 
-# macOS
-GOOS=darwin GOARCH=amd64 go build -o sweb main.go upload.go files.go webdav.go server.go utils.go socks5.go proxy.go
+# Linux 64位
+GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o bin/linux/sweb-linux-amd64 ./src/*.go
+
+# Linux 32位
+GOOS=linux GOARCH=386 go build -ldflags "-s -w" -o bin/linux/sweb-linux-386 ./src/*.go
+
+# macOS Intel
+GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o bin/macos/sweb-darwin-amd64 ./src/*.go
+
+# macOS Apple Silicon
+GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o bin/macos/sweb-darwin-arm64 ./src/*.go
 ```
 
 ### 运行测试
@@ -601,7 +638,7 @@ netstat -an | grep :8080
 
 ## 🔄 版本历史
 
-### v2.0.0 (当前版本)
+### v0.0.4 (当前版本)
 - ✅ 基础静态文件服务
 - ✅ 拖拽多文件上传功能（带进度条）
 - ✅ 专门的文件浏览页面
@@ -614,11 +651,22 @@ netstat -an | grep :8080
 - ✅ 命令行参数配置
 - ✅ 安全默认策略
 - ✅ 模块化代码结构
+- ✅ 重构目录结构（src/、test/、doc/、tools/）
+- ✅ 多平台编译支持（Windows/Linux/macOS，32位和64位）
+- ✅ 完整的测试套件和文档
 
-### v1.0.0
+### v0.0.3
 - ✅ 基础文件服务功能
 - ✅ WebDAV和HTTPS支持
 - ✅ Web界面和状态监控
+
+### v0.0.2
+- ✅ 文件上传和浏览功能
+- ✅ 代理服务器支持
+
+### v0.0.1
+- ✅ 初始版本
+- ✅ 基础HTTP服务器
 
 ### 计划功能
 - [ ] 用户认证和权限管理
