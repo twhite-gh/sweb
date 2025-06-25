@@ -73,8 +73,25 @@ func main() {
 	createDefaultPageIfNeeded(webDir, uploadEnabled)
 
 	// 处理静态文件（HTML, JS等）
+	//fileServer := http.FileServer(http.Dir(webDir))
+	//http.Handle("/", fileServer)
+	// 创建一个文件服务器，用于处理静态文件
+	// 注意：http.Dir 会自动处理路径安全，阻止目录遍历
 	fileServer := http.FileServer(http.Dir(webDir))
-	http.Handle("/", fileServer)
+
+	// 使用 http.HandleFunc 注册一个通用的处理函数
+	// 这个处理函数会优先处理 "/" 路径，然后将其他路径转发给文件服务器
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// 如果请求的是根路径 "/"
+		if r.URL.Path == "/" {
+			serveIndexOrAbout(w, r, webDir)
+			return // 处理完毕，不再继续
+		}
+
+		// 如果不是根路径，则使用文件服务器处理请求
+		// 这样做是为了让像 /style.css, /images/logo.png 这样的请求能够被正常服务
+		fileServer.ServeHTTP(w, r)
+	})
 
 	// 添加状态API端点
 	http.HandleFunc("/api/status", statusHandler)

@@ -66,3 +66,37 @@ func startServers() {
 	// 等待任一服务器出错
 	log.Fatal(<-errChan)
 }
+
+// serveIndexOrAbout 处理根路径的请求，根据 index.html 的存在情况返回不同页面
+func serveIndexOrAbout(w http.ResponseWriter, r *http.Request, webFilesDir string) {
+	indexPath := filepath.Join(webFilesDir, "index.html")
+	aboutPath := filepath.Join(webFilesDir, "about.html")
+
+	// 检查 index.html 是否存在
+	_, err := os.Stat(indexPath)
+	if err == nil {
+		// index.html 存在，返回 index.html
+		http.ServeFile(w, r, indexPath)
+		log.Printf("Serving %s for path /", indexPath)
+	} else if os.IsNotExist(err) {
+		// index.html 不存在，返回 about.html
+		// 再次检查 about.html 是否存在，以防万一
+		_, err := os.Stat(aboutPath)
+		if err == nil {
+			http.ServeFile(w, r, aboutPath)
+			log.Printf("Serving %s for path / (index.html not found)", aboutPath)
+		} else if os.IsNotExist(err) {
+			// about.html 也不存在
+			http.NotFound(w, r)
+			log.Printf("Neither index.html nor about.html found in %s", webFilesDir)
+		} else {
+			// 其他文件系统错误
+			http.Error(w, "Error checking about.html: "+err.Error(), http.StatusInternalServerError)
+			log.Printf("Error checking about.html: %v", err)
+		}
+	} else {
+		// 其他文件系统错误（例如权限问题）
+		http.Error(w, "Error checking index.html: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("Error checking index.html: %v", err)
+	}
+}
