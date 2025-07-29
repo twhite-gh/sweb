@@ -1,16 +1,20 @@
-# 🌐 简单Web文件服务器
+# 🌐 简单Web文件服务器 v0.0.5
 
-一个用Go语言编写的轻量级Web文件服务器，支持静态文件服务、文件上传、文件浏览、WebDAV协议和HTTPS加密连接。
+一个用Go语言编写的轻量级Web文件服务器，支持静态文件服务、文件上传、文件浏览、WebDAV协议、HTTPS加密连接、SOCKS5代理和HTTP代理服务。支持中英文双语界面，根据浏览器语言自动切换或手动选择。
 
 ## ✨ 项目特色
 
 - 🚀 **零配置启动** - 开箱即用，自动创建必要的目录结构
 - 🔒 **安全优先** - 高级功能默认禁用，通过命令行参数明确启用
+- 🔐 **认证支持** - WebDAV和HTTP代理支持Basic认证，保护服务安全
 - 📂 **文件浏览** - 专门的文件浏览页面，支持拖拽多文件上传和进度显示
-- 🌐 **WebDAV支持** - 完整的WebDAV协议实现，支持远程文件管理
+- 🌐 **WebDAV支持** - 完整的WebDAV协议实现，支持远程文件管理和认证
 - 🔐 **HTTPS加密** - 支持SSL/TLS加密连接，确保数据传输安全
+- 🌐 **代理服务** - 支持SOCKS5和HTTP代理，支持Basic认证保护
 - 📱 **实时状态** - 动态显示功能状态，支持热更新
-- 🎨 **现代界面** - 响应式设计，支持中文界面
+- 🎨 **现代界面** - 响应式设计，支持中英文双语界面
+- 🌍 **多语言支持** - 根据浏览器语言自动切换，支持手动语言选择
+- ⚙️ **灵活配置** - 支持HTTP服务开关，可仅启用HTTPS或代理服务
 
 ## 📋 主要功能
 
@@ -33,6 +37,7 @@
 - 完整的WebDAV协议支持（RFC 4918）
 - 支持读写和只读两种模式
 - 可配置挂载目录
+- 支持Basic认证保护（默认用户名/密码：webdav/webdav）
 - 兼容各种WebDAV客户端
 
 ### 🔐 HTTPS服务
@@ -80,6 +85,9 @@
 # 启用WebDAV服务
 ./sweb.exe -webdav
 
+# 启用WebDAV服务并开启认证
+./sweb.exe -webdav -webdav-auth
+
 # 启用HTTPS服务
 ./sweb.exe -https
 
@@ -89,8 +97,23 @@
 # 启用HTTP代理服务
 ./sweb.exe -proxy
 
+# 启用SOCKS5代理服务并开启认证
+./sweb.exe -socks5 -socks5-auth
+
+# 启用HTTP代理服务并开启认证
+./sweb.exe -proxy -proxy-auth
+
+# 仅启用HTTPS服务（关闭HTTP）
+./sweb.exe -http=false -https
+
 # 启用所有功能
-./sweb.exe -upload -files -webdav -https -socks5 -proxy
+./sweb.exe -upload -files -webdav -webdav-auth -https -socks5 -proxy -proxy-auth
+
+# 查看中文帮助信息（默认）
+./sweb.exe -help
+
+# 查看英文帮助信息
+./sweb.exe -help-lang en -help
 
 # 指定端口
 ./sweb.exe -port 9000
@@ -108,14 +131,25 @@
 | `--enable-webdav` | `-webdav` | 启用WebDAV服务 | 禁用 |
 | `--webdav-dir` | | WebDAV服务的根目录 | 当前目录 |
 | `--webdav-readonly` | | WebDAV服务只读模式 | 读写模式 |
+| `--webdav-auth` | | 启用WebDAV认证 | 禁用 |
+| `--webdav-username` | | WebDAV认证用户名 | webdav |
+| `--webdav-password` | | WebDAV认证密码 | webdav |
+| `--enable-http` | `-http` | 启用HTTP服务 | 启用 |
 | `--https` | | 启用HTTPS服务 | 禁用 |
 | `--enable-socks5` | `-socks5` | 启用SOCKS5代理服务 | 禁用 |
+| `--socks5-auth` | | 启用SOCKS5代理认证 | 禁用 |
+| `--socks5-username` | | SOCKS5代理认证用户名 | socks5 |
+| `--socks5-password` | | SOCKS5代理认证密码 | socks5 |
 | `--enable-proxy` | `-proxy` | 启用HTTP代理服务 | 禁用 |
+| `--proxy-auth` | | 启用HTTP代理认证 | 禁用 |
+| `--proxy-username` | | HTTP代理认证用户名 | http |
+| `--proxy-password` | | HTTP代理认证密码 | http |
 | `--port` | `-p` | HTTP服务器端口 | 8080 |
 | `--https-port` | | HTTPS服务器端口 | 8443 |
 | `--socks5-port` | | SOCKS5代理端口 | 1080 |
 | `--proxy-port` | | HTTP代理端口 | 10808 |
 | `--cert-dir` | | SSL证书目录 | ./cert |
+| `--help-lang` | | 帮助信息语言 (zh/en) | zh |
 | `--help` | `-h` | 显示帮助信息 | |
 
 ## 📂 文件浏览功能
@@ -213,8 +247,14 @@ openssl req -x509 -newkey rsa:4096 -keyout cert/server.key -out cert/server.crt 
 # 启用SOCKS5代理服务
 ./sweb.exe -socks5
 
+# 启用SOCKS5代理服务并开启认证
+./sweb.exe -socks5 -socks5-auth
+
 # 指定自定义端口
 ./sweb.exe -socks5 -socks5-port 1080
+
+# 自定义认证用户名和密码
+./sweb.exe -socks5 -socks5-auth -socks5-username myuser -socks5-password mypass
 
 # 与其他功能一起使用
 ./sweb.exe -socks5 -upload -files
@@ -242,7 +282,7 @@ echo "socks5 127.0.0.1 1080" >> /etc/proxychains.conf
 ### 功能特性
 - **高性能**: 基于Go协程的并发处理
 - **标准协议**: 完整支持SOCKS5协议（RFC 1928）
-- **无认证**: 简化配置，适合内网使用
+- **认证支持**: 支持无认证和用户名密码认证两种模式
 - **IPv4/IPv6**: 支持双栈网络
 - **域名解析**: 支持远程域名解析
 
@@ -254,11 +294,17 @@ echo "socks5 127.0.0.1 1080" >> /etc/proxychains.conf
 # 启用HTTP代理服务
 ./sweb.exe -proxy
 
+# 启用HTTP代理服务并开启认证
+./sweb.exe -proxy -proxy-auth
+
 # 指定自定义端口
 ./sweb.exe -proxy -proxy-port 10808
 
+# 自定义认证用户名和密码
+./sweb.exe -proxy -proxy-auth -proxy-username myuser -proxy-password mypass
+
 # 与其他功能一起使用
-./sweb.exe -proxy -https -webdav
+./sweb.exe -proxy -proxy-auth -https -webdav -webdav-auth
 ```
 
 ### 客户端配置
@@ -270,20 +316,31 @@ echo "socks5 127.0.0.1 1080" >> /etc/proxychains.conf
 
 #### 命令行工具配置
 ```bash
-# curl使用HTTP代理
+# curl使用HTTP代理（无认证）
 curl --proxy http://localhost:10808 https://example.com
 
-# wget使用HTTP代理
+# curl使用HTTP代理（带认证）
+curl --proxy http://http:http@localhost:10808 https://example.com
+
+# wget使用HTTP代理（无认证）
 wget --proxy=on --http-proxy=localhost:10808 https://example.com
 
-# 设置环境变量
+# wget使用HTTP代理（带认证）
+wget --proxy=on --http-proxy=http:http@localhost:10808 https://example.com
+
+# 设置环境变量（无认证）
 export http_proxy=http://localhost:10808
 export https_proxy=http://localhost:10808
+
+# 设置环境变量（带认证）
+export http_proxy=http://http:http@localhost:10808
+export https_proxy=http://http:http@localhost:10808
 ```
 
 ### 功能特性
 - **HTTP/HTTPS支持**: 同时支持HTTP和HTTPS协议
 - **CONNECT方法**: 支持HTTPS隧道代理
+- **Basic认证**: 支持用户名密码认证保护代理服务
 - **高并发**: 基于Go协程的高性能处理
 - **透明代理**: 完整转发HTTP头部信息
 - **错误处理**: 完善的错误处理和日志记录
@@ -303,6 +360,40 @@ export https_proxy=http://localhost:10808
 - **部署**: 轻量级，单文件部署
 - **并发**: 基于协程的高并发处理
 - **构建**: 支持交叉编译，一次构建多平台
+
+## 🌍 多语言支持
+
+sweb支持中英文双语界面，提供完整的国际化体验：
+
+### 🔧 语言设置
+
+- **自动检测**: 根据浏览器语言自动选择界面语言
+- **手动切换**: 页面右上角提供语言切换按钮
+- **本地存储**: 用户选择的语言偏好会保存在浏览器中
+
+### 📖 帮助信息语言
+
+```bash
+# 显示中文帮助信息（默认）
+./sweb.exe -help
+
+# 显示英文帮助信息
+./sweb.exe -help-lang en -help
+```
+
+### 🌐 Web界面语言
+
+- **中文界面**: 浏览器语言为中文时自动显示
+- **英文界面**: 其他语言浏览器自动显示英文界面
+- **语言切换**: 点击页面右上角的"中文"/"English"按钮切换
+- **状态同步**: 所有功能状态信息都支持双语显示
+
+### 📱 支持的语言
+
+| 语言 | 代码 | 支持范围 |
+|------|------|----------|
+| 中文 | zh | 完整支持（帮助信息、Web界面） |
+| 英文 | en | 完整支持（帮助信息、Web界面） |
 
 ## 📊 实时状态监控
 
@@ -368,16 +459,20 @@ export https_proxy=http://localhost:10808
 - 文件上传功能默认**禁用**
 - 文件浏览功能默认**禁用**
 - WebDAV服务默认**禁用**
+- WebDAV认证默认**禁用**
 - HTTPS服务默认**禁用**
 - SOCKS5代理服务默认**禁用**
+- SOCKS5代理认证默认**禁用**
 - HTTP代理服务默认**禁用**
+- HTTP代理认证默认**禁用**
 - 需要通过命令行参数明确启用高级功能
 
 ### 权限控制
-- WebDAV支持只读模式
+- WebDAV支持只读模式和Basic认证
 - 可限制WebDAV访问目录范围
-- 代理服务无认证机制，仅适用于可信网络
-- 建议在可信网络环境中使用
+- HTTP代理支持Basic认证保护
+- SOCKS5代理无认证机制，仅适用于可信网络
+- 建议在生产环境中启用认证功能
 
 ### 最佳实践
 ```bash
@@ -638,7 +733,15 @@ netstat -an | grep :8080
 
 ## 🔄 版本历史
 
-### v0.0.4 (当前版本)
+### v0.0.5 (当前版本)
+- ✅ WebDAV服务Basic认证支持
+- ✅ HTTP代理服务Basic认证支持
+- ✅ SOCKS5代理服务Basic认证支持
+- ✅ HTTP服务开关功能（可仅启用HTTPS或代理服务）
+- ✅ 认证功能测试套件
+- ✅ 更新文档和帮助信息
+
+### v0.0.4
 - ✅ 基础静态文件服务
 - ✅ 拖拽多文件上传功能（带进度条）
 - ✅ 专门的文件浏览页面
@@ -669,14 +772,14 @@ netstat -an | grep :8080
 - ✅ 基础HTTP服务器
 
 ### 计划功能
-- [ ] 用户认证和权限管理
-- [ ] 代理服务认证机制
+- [ ] 用户认证和权限管理系统
+- [x] ~~代理服务认证机制~~ (v0.0.5已实现)
 - [ ] 文件预览功能
 - [ ] 批量文件操作
 - [ ] 配置文件支持
 - [ ] 文件搜索功能
 - [ ] 文件版本管理
-- [ ] 代理服务访问控制
+- [ ] 代理服务访问控制和白名单
 
 ## 📞 联系方式
 

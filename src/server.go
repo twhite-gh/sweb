@@ -32,18 +32,30 @@ func checkCertificates() error {
 
 // startServers 启动HTTP和HTTPS服务器
 func startServers() {
+	// 检查是否至少启用了一个服务器
+	if !httpEnabled && !httpsEnabled {
+		log.Fatal("错误: 必须至少启用HTTP或HTTPS服务器中的一个")
+	}
+
 	// 创建一个通道来接收错误
 	errChan := make(chan error, 2)
+	serverCount := 0
 
-	// 启动HTTP服务器
-	go func() {
-		fmt.Printf("🌐 HTTP服务器启动在 http://localhost:%d\n", httpPort)
-		err := http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil)
-		errChan <- fmt.Errorf("HTTP服务器错误: %v", err)
-	}()
+	// 如果启用了HTTP，启动HTTP服务器
+	if httpEnabled {
+		serverCount++
+		go func() {
+			fmt.Printf("🌐 HTTP服务器启动在 http://localhost:%d\n", httpPort)
+			err := http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil)
+			errChan <- fmt.Errorf("HTTP服务器错误: %v", err)
+		}()
+	} else {
+		fmt.Println("🔒 HTTP服务已禁用 (使用 -http 参数启用)")
+	}
 
 	// 如果启用了HTTPS，启动HTTPS服务器
 	if httpsEnabled {
+		serverCount++
 		go func() {
 			// 检查证书文件
 			if err := checkCertificates(); err != nil {

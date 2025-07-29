@@ -50,6 +50,9 @@ type SOCKS5Server struct {
 	running  bool
 	mutex    sync.RWMutex
 	stats    SOCKS5Stats
+	auth     bool
+	username string
+	password string
 }
 
 // SOCKS5统计信息
@@ -66,13 +69,16 @@ type SOCKS5Stats struct {
 var socks5Server *SOCKS5Server
 
 // startSOCKS5Server 启动SOCKS5代理服务器
-func startSOCKS5Server(port int) error {
+func startSOCKS5Server(port int, auth bool, username, password string) error {
 	if socks5Server != nil && socks5Server.IsRunning() {
 		return fmt.Errorf("SOCKS5服务器已在运行")
 	}
 
 	server := &SOCKS5Server{
-		port: port,
+		port:     port,
+		auth:     auth,
+		username: username,
+		password: password,
 	}
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
@@ -230,12 +236,15 @@ func (s *SOCKS5Server) handleAuthentication(conn net.Conn) error {
 
 	log.Printf("SOCKS5认证: 版本=%d, 方法数量=%d", version, nmethods)
 
-	// 检查支持的认证方法（目前只支持无认证）
+	// 检查支持的认证方法
 	supportedMethod := AUTH_NO_ACCEPTABLE
 	for i := 0; i < nmethods; i++ {
 		method := buf[2+i]
 		log.Printf("SOCKS5认证: 客户端支持方法 %d", method)
-		if method == AUTH_NO_AUTH {
+		if s.auth && method == AUTH_PASSWORD {
+			supportedMethod = AUTH_PASSWORD
+			break
+		} else if !s.auth && method == AUTH_NO_AUTH {
 			supportedMethod = AUTH_NO_AUTH
 			break
 		}
@@ -254,7 +263,73 @@ func (s *SOCKS5Server) handleAuthentication(conn net.Conn) error {
 		return fmt.Errorf("不支持的认证方法")
 	}
 
+	// 如果选择了用户名密码认证，进行认证验证
+	if supportedMethod == AUTH_PASSWORD {
+		if err := s.handlePasswordAuthentication(conn); err != nil {
+			return fmt.Errorf("用户名密码认证失败: %v", err)
+		}
+	}
+
 	log.Printf("SOCKS5认证: 认证协商成功")
+	return nil
+}
+
+// handlePasswordAuthentication 处理用户名密码认证
+func (s *SOCKS5Server) handlePasswordAuthentication(conn net.Conn) error {
+	// 读取用户名密码认证请求
+	buf := make([]byte, 256)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return fmt.Errorf("读取认证数据失败: %v", err)
+	}
+
+	if n < 3 {
+		return fmt.Errorf("认证数据太短")
+	}
+
+	// 检查认证版本（应该是1）
+	if buf[0] != 0x01 {
+		return fmt.Errorf("无效的认证版本: %d", buf[0])
+	}
+
+	// 解析用户名
+	usernameLen := int(buf[1])
+	if n < 2+usernameLen+1 {
+		return fmt.Errorf("用户名数据不完整")
+	}
+	username := string(buf[2 : 2+usernameLen])
+
+	// 解析密码
+	passwordLen := int(buf[2+usernameLen])
+	if n < 2+usernameLen+1+passwordLen {
+		return fmt.Errorf("密码数据不完整")
+	}
+	password := string(buf[2+usernameLen+1 : 2+usernameLen+1+passwordLen])
+
+	log.Printf("SOCKS5认证: 用户名=%s", username)
+
+	// 验证用户名和密码
+	success := (username == s.username && password == s.password)
+
+	// 发送认证结果
+	var response []byte
+	if success {
+		response = []byte{0x01, 0x00} // 认证成功
+		log.Printf("SOCKS5认证: 用户名密码认证成功")
+	} else {
+		response = []byte{0x01, 0x01} // 认证失败
+		log.Printf("SOCKS5认证: 用户名密码认证失败")
+	}
+
+	_, err = conn.Write(response)
+	if err != nil {
+		return fmt.Errorf("发送认证结果失败: %v", err)
+	}
+
+	if !success {
+		return fmt.Errorf("用户名或密码错误")
+	}
+
 	return nil
 }
 

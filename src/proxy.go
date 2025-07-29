@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -20,6 +21,9 @@ type HTTPProxyServer struct {
 	running  bool
 	mutex    sync.RWMutex
 	stats    HTTPProxyStats
+	auth     bool
+	username string
+	password string
 }
 
 // HTTP代理统计信息
@@ -38,13 +42,16 @@ type HTTPProxyStats struct {
 var httpProxyServer *HTTPProxyServer
 
 // startHTTPProxyServer 启动HTTP代理服务器
-func startHTTPProxyServer(port int) error {
+func startHTTPProxyServer(port int, auth bool, username, password string) error {
 	if httpProxyServer != nil && httpProxyServer.IsRunning() {
 		return fmt.Errorf("HTTP代理服务器已在运行")
 	}
 
 	server := &HTTPProxyServer{
-		port: port,
+		port:     port,
+		auth:     auth,
+		username: username,
+		password: password,
 	}
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
@@ -56,7 +63,11 @@ func startHTTPProxyServer(port int) error {
 	server.running = true
 	httpProxyServer = server
 
-	fmt.Printf("🌐 HTTP代理服务器启动在端口 %d\n", port)
+	if auth {
+		fmt.Printf("🌐 HTTP代理服务器启动在端口 %d (认证: %s)\n", port, username)
+	} else {
+		fmt.Printf("🌐 HTTP代理服务器启动在端口 %d (无认证)\n", port)
+	}
 
 	go server.acceptConnections()
 
@@ -127,6 +138,40 @@ func (s *HTTPProxyServer) acceptConnections() {
 	}
 }
 
+// checkAuthentication 检查HTTP代理认证
+func (s *HTTPProxyServer) checkAuthentication(request *http.Request) bool {
+	// 获取Proxy-Authorization头
+	authHeader := request.Header.Get("Proxy-Authorization")
+	if authHeader == "" {
+		return false
+	}
+
+	// 检查是否是Basic认证
+	if !strings.HasPrefix(authHeader, "Basic ") {
+		return false
+	}
+
+	// 解码Base64编码的认证信息
+	encoded := authHeader[6:] // 去掉"Basic "前缀
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return false
+	}
+
+	// 解析用户名和密码
+	credentials := string(decoded)
+	parts := strings.SplitN(credentials, ":", 2)
+	if len(parts) != 2 {
+		return false
+	}
+
+	username := parts[0]
+	password := parts[1]
+
+	// 验证用户名和密码
+	return username == s.username && password == s.password
+}
+
 // handleConnection 处理单个客户端连接
 func (s *HTTPProxyServer) handleConnection(conn net.Conn) {
 	defer func() {
@@ -153,6 +198,21 @@ func (s *HTTPProxyServer) handleConnection(conn net.Conn) {
 		s.stats.FailedConnections++
 		s.stats.mutex.Unlock()
 		return
+	}
+
+	// 检查认证
+	if s.auth {
+		if !s.checkAuthentication(request) {
+			// 发送407 Proxy Authentication Required响应
+			response := "HTTP/1.1 407 Proxy Authentication Required\r\n" +
+				"Proxy-Authenticate: Basic realm=\"HTTP Proxy\"\r\n" +
+				"Content-Length: 0\r\n\r\n"
+			conn.Write([]byte(response))
+			s.stats.mutex.Lock()
+			s.stats.FailedConnections++
+			s.stats.mutex.Unlock()
+			return
+		}
 	}
 
 	// 根据请求方法处理

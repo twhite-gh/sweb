@@ -14,15 +14,26 @@ var (
 	webdavEnabled  bool
 	webdavDir      string
 	webdavReadonly bool
+	webdavAuth     bool
+	webdavUsername string
+	webdavPassword string
 	httpsEnabled   bool
+	httpEnabled    bool
 	httpPort       int
 	httpsPort      int
 	certDir        string
 	filesEnabled   bool
 	socks5Enabled  bool
 	socks5Port     int
+	socks5Auth     bool
+	socks5Username string
+	socks5Password string
 	proxyEnabled   bool
 	proxyPort      int
+	proxyAuth      bool
+	proxyUsername  string
+	proxyPassword  string
+	helpLang       string
 )
 
 func main() {
@@ -37,8 +48,13 @@ func main() {
 	flag.BoolVar(&webdavEnabled, "enable-webdav", false, "启用WebDAV服务")
 	flag.StringVar(&webdavDir, "webdav-dir", ".", "WebDAV服务的根目录")
 	flag.BoolVar(&webdavReadonly, "webdav-readonly", false, "WebDAV服务只读模式")
+	flag.BoolVar(&webdavAuth, "webdav-auth", false, "启用WebDAV认证")
+	flag.StringVar(&webdavUsername, "webdav-username", "webdav", "WebDAV认证用户名")
+	flag.StringVar(&webdavPassword, "webdav-password", "webdav", "WebDAV认证密码")
 	flag.BoolVar(&httpsEnabled, "https", false, "启用HTTPS服务")
 	flag.BoolVar(&httpsEnabled, "enable-https", false, "启用HTTPS服务")
+	flag.BoolVar(&httpEnabled, "http", true, "启用HTTP服务")
+	flag.BoolVar(&httpEnabled, "enable-http", true, "启用HTTP服务")
 	flag.IntVar(&httpPort, "port", 8080, "指定HTTP服务器端口")
 	flag.IntVar(&httpPort, "p", 8080, "指定HTTP服务器端口")
 	flag.IntVar(&httpsPort, "https-port", 8443, "指定HTTPS服务器端口")
@@ -46,9 +62,16 @@ func main() {
 	flag.BoolVar(&socks5Enabled, "socks5", false, "启用SOCKS5代理服务")
 	flag.BoolVar(&socks5Enabled, "enable-socks5", false, "启用SOCKS5代理服务")
 	flag.IntVar(&socks5Port, "socks5-port", 1080, "指定SOCKS5代理服务器端口")
+	flag.BoolVar(&socks5Auth, "socks5-auth", false, "启用SOCKS5代理认证")
+	flag.StringVar(&socks5Username, "socks5-username", "socks5", "SOCKS5代理认证用户名")
+	flag.StringVar(&socks5Password, "socks5-password", "socks5", "SOCKS5代理认证密码")
 	flag.BoolVar(&proxyEnabled, "proxy", false, "启用HTTP代理服务")
 	flag.BoolVar(&proxyEnabled, "enable-proxy", false, "启用HTTP代理服务")
 	flag.IntVar(&proxyPort, "proxy-port", 10808, "指定HTTP代理服务器端口")
+	flag.BoolVar(&proxyAuth, "proxy-auth", false, "启用HTTP代理认证")
+	flag.StringVar(&proxyUsername, "proxy-username", "http", "HTTP代理认证用户名")
+	flag.StringVar(&proxyPassword, "proxy-password", "http", "HTTP代理认证密码")
+	flag.StringVar(&helpLang, "help-lang", "zh", "帮助信息语言 (zh/en)")
 	flag.BoolVar(&showHelp, "help", false, "显示帮助信息")
 	flag.BoolVar(&showHelp, "h", false, "显示帮助信息")
 
@@ -56,7 +79,7 @@ func main() {
 
 	// 显示帮助信息
 	if showHelp {
-		showHelpInfo()
+		showHelpInfo(helpLang)
 		return
 	}
 
@@ -120,11 +143,15 @@ func main() {
 	// 根据参数决定是否启用WebDAV服务
 	if webdavEnabled {
 		setupWebDAVHandler()
+		mode := "读写模式"
 		if webdavReadonly {
-			fmt.Printf("✅ WebDAV服务已启用 (只读模式) - 目录: %s\n", webdavDir)
-		} else {
-			fmt.Printf("✅ WebDAV服务已启用 (读写模式) - 目录: %s\n", webdavDir)
+			mode = "只读模式"
 		}
+		auth := "无认证"
+		if webdavAuth {
+			auth = fmt.Sprintf("认证: %s", webdavUsername)
+		}
+		fmt.Printf("✅ WebDAV服务已启用 (%s, %s) - 目录: %s\n", mode, auth, webdavDir)
 	} else {
 		http.HandleFunc("/webdav", webdavDisabledHandler)
 		fmt.Println("🔒 WebDAV服务已禁用 (使用 -webdav 参数启用)")
@@ -132,10 +159,14 @@ func main() {
 
 	// 根据参数决定是否启用SOCKS5代理服务
 	if socks5Enabled {
-		if err := startSOCKS5Server(socks5Port); err != nil {
+		if err := startSOCKS5Server(socks5Port, socks5Auth, socks5Username, socks5Password); err != nil {
 			log.Fatalf("启动SOCKS5代理服务失败: %v", err)
 		}
-		fmt.Printf("✅ SOCKS5代理服务已启用 - 端口: %d\n", socks5Port)
+		auth := "无认证"
+		if socks5Auth {
+			auth = fmt.Sprintf("认证: %s", socks5Username)
+		}
+		fmt.Printf("✅ SOCKS5代理服务已启用 - 端口: %d (%s)\n", socks5Port, auth)
 	} else {
 		http.HandleFunc("/socks5", socks5DisabledHandler)
 		fmt.Println("🔒 SOCKS5代理服务已禁用 (使用 -socks5 参数启用)")
@@ -143,10 +174,14 @@ func main() {
 
 	// 根据参数决定是否启用HTTP代理服务
 	if proxyEnabled {
-		if err := startHTTPProxyServer(proxyPort); err != nil {
+		if err := startHTTPProxyServer(proxyPort, proxyAuth, proxyUsername, proxyPassword); err != nil {
 			log.Fatalf("启动HTTP代理服务失败: %v", err)
 		}
-		fmt.Printf("✅ HTTP代理服务已启用 - 端口: %d\n", proxyPort)
+		if proxyAuth {
+			fmt.Printf("✅ HTTP代理服务已启用 - 端口: %d (认证: %s)\n", proxyPort, proxyUsername)
+		} else {
+			fmt.Printf("✅ HTTP代理服务已启用 - 端口: %d (无认证)\n", proxyPort)
+		}
 	} else {
 		http.HandleFunc("/proxy", httpProxyDisabledHandler)
 		fmt.Println("🔒 HTTP代理服务已禁用 (使用 -proxy 参数启用)")
