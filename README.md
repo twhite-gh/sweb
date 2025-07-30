@@ -508,6 +508,7 @@ sweb支持中英文双语界面，提供完整的国际化体验：
     "enabled": true,
     "readonly": false,
     "directory": "./files",
+    "port": 8081,
     "status": "enabled-readwrite"
   },
   "https": {

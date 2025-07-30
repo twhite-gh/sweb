@@ -110,7 +110,7 @@ Export-PfxCertificate -Cert $cert -FilePath "cert\server.pfx" -Password $pwd
 ### API状态查询
 ```bash
 # 查询服务状态
-curl http://localhost:8080/api/upload-status
+curl http://localhost:8080/api/status
 ```
 
 API响应示例：
@@ -131,6 +131,7 @@ API响应示例：
     "enabled": true,
     "readonly": false,
     "directory": ".",
+    "port": 8081,
     "status": "enabled-readwrite"
   }
 }

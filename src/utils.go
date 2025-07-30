@@ -65,6 +65,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 			"enabled":   webdavEnabled,
 			"readonly":  webdavReadonly,
 			"directory": webdavDir,
+			"port":      webdavPort,
 			"status": func() string {
 				if webdavEnabled {
 					if webdavReadonly {
@@ -385,7 +386,7 @@ func generateEnhancedDefaultPageContent() string {
             <span id="webdav-feature-description">WebDAV服务可通过命令行参数启用，支持文件管理客户端连接。</span>
             <span id="webdav-status" class="status-indicator loading">🔄 检查中...</span>
             <div id="webdav-info" class="webdav-info hidden">
-                <strong>WebDAV地址:</strong> <code id="webdav-url">http://localhost:8080/webdav</code><br>
+                <strong>WebDAV地址:</strong> <code id="webdav-url">http://localhost:8081/webdav</code><br>
                 <strong>挂载目录:</strong> <code id="webdav-directory">.</code><br>
                 <strong>访问模式:</strong> <span id="webdav-mode">读写</span>
             </div>
@@ -460,7 +461,7 @@ func generateEnhancedDefaultPageContent() string {
             <p><strong>WebDAV服务：</strong></p>
             <div id="webdav-enabled-content" class="hidden">
                 <a href="/webdav" class="button" id="webdav-button">🌐 访问WebDAV</a>
-                <p><small>可以在文件管理器中添加网络位置：<code id="webdav-mount-url">http://localhost:8080/webdav</code></small></p>
+                <p><small>可以在文件管理器中添加网络位置：<code id="webdav-mount-url">http://localhost:8081/webdav</code></small></p>
             </div>
             <div id="webdav-disabled-content" class="hidden">
                 <p>要启用WebDAV服务，请使用以下命令启动服务器：</p>
@@ -655,6 +656,15 @@ func generateEnhancedDefaultPageContent() string {
                 }
 
                 webdavDirectory.textContent = webdavData.directory || '.';
+
+                // 动态更新WebDAV URL（使用端口信息）
+                const webdavPort = webdavData.port || 8081;
+                const webdavUrlText = ` + "`" + `http://localhost:${webdavPort}/webdav` + "`" + `;
+                const webdavUrl = document.getElementById('webdav-url');
+                const webdavMountUrl = document.getElementById('webdav-mount-url');
+                if (webdavUrl) webdavUrl.textContent = webdavUrlText;
+                if (webdavMountUrl) webdavMountUrl.textContent = webdavUrlText;
+
                 webdavInfo.classList.remove('hidden');
                 webdavEnabledContent.classList.remove('hidden');
                 webdavDisabledContent.classList.add('hidden');
@@ -974,7 +984,7 @@ func generateMultiLanguagePageContent() string {
                 <span id="webdav-feature-description-zh">WebDAV服务可通过命令行参数启用，支持文件管理客户端连接。</span>
                 <span id="webdav-status" class="status-indicator loading">🔄 检查中...</span>
                 <div id="webdav-info" class="webdav-info hidden">
-                    <strong>WebDAV地址:</strong> <code id="webdav-url">http://localhost:8080/webdav</code><br>
+                    <strong>WebDAV地址:</strong> <code id="webdav-url">http://localhost:8081/webdav</code><br>
                     <strong>挂载目录:</strong> <code id="webdav-directory">.</code><br>
                     <strong>访问模式:</strong> <span id="webdav-mode">读写</span>
                 </div>
@@ -1050,7 +1060,7 @@ func generateMultiLanguagePageContent() string {
                 <p><strong>WebDAV服务：</strong></p>
                 <div id="webdav-enabled-content" class="hidden">
                     <a href="/webdav" class="button" id="webdav-button">🌐 访问WebDAV</a>
-                    <p><small>可以在文件管理器中添加网络位置：<code id="webdav-mount-url">http://localhost:8080/webdav</code></small></p>
+                    <p><small>可以在文件管理器中添加网络位置：<code id="webdav-mount-url">http://localhost:8081/webdav</code></small></p>
                 </div>
                 <div id="webdav-disabled-content" class="hidden">
                     <p>要启用WebDAV服务，请使用以下命令启动服务器：</p>
@@ -1172,7 +1182,7 @@ func generateMultiLanguagePageContent() string {
                 <span id="webdav-feature-description-en">WebDAV service can be enabled via command line parameters, supporting file management client connections.</span>
                 <span id="webdav-status-en" class="status-indicator loading">🔄 Checking...</span>
                 <div id="webdav-info-en" class="webdav-info hidden">
-                    <strong>WebDAV URL:</strong> <code id="webdav-url-en">http://localhost:8080/webdav</code><br>
+                    <strong>WebDAV URL:</strong> <code id="webdav-url-en">http://localhost:8081/webdav</code><br>
                     <strong>Mount Directory:</strong> <code id="webdav-directory-en">.</code><br>
                     <strong>Access Mode:</strong> <span id="webdav-mode-en">Read-Write</span>
                 </div>
@@ -1248,7 +1258,7 @@ func generateMultiLanguagePageContent() string {
                 <p><strong>WebDAV Service:</strong></p>
                 <div id="webdav-enabled-content-en" class="hidden">
                     <a href="/webdav" class="button" id="webdav-button-en">🌐 Access WebDAV</a>
-                    <p><small>You can add network location in file manager: <code id="webdav-mount-url-en">http://localhost:8080/webdav</code></small></p>
+                    <p><small>You can add network location in file manager: <code id="webdav-mount-url-en">http://localhost:8081/webdav</code></small></p>
                 </div>
                 <div id="webdav-disabled-content-en" class="hidden">
                     <p>To enable WebDAV service, start the server with:</p>
@@ -1576,6 +1586,18 @@ func generateMultiLanguagePageContent() string {
 
                 if (webdavDirectory) webdavDirectory.textContent = webdavData.directory || '.';
                 if (webdavDirectoryEn) webdavDirectoryEn.textContent = webdavData.directory || '.';
+
+                // 动态更新WebDAV URL（使用端口信息）
+                const webdavPort = webdavData.port || 8081;
+                const webdavUrlText = ` + "`" + `http://localhost:${webdavPort}/webdav` + "`" + `;
+                const webdavUrl = document.getElementById('webdav-url');
+                const webdavUrlEn = document.getElementById('webdav-url-en');
+                const webdavMountUrl = document.getElementById('webdav-mount-url');
+                const webdavMountUrlEn = document.getElementById('webdav-mount-url-en');
+                if (webdavUrl) webdavUrl.textContent = webdavUrlText;
+                if (webdavUrlEn) webdavUrlEn.textContent = webdavUrlText;
+                if (webdavMountUrl) webdavMountUrl.textContent = webdavUrlText;
+                if (webdavMountUrlEn) webdavMountUrlEn.textContent = webdavUrlText;
 
                 if (webdavEnabledContent) webdavEnabledContent.classList.remove('hidden');
                 if (webdavDisabledContent) webdavDisabledContent.classList.add('hidden');

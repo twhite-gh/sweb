@@ -22,6 +22,7 @@ type ServerStatus struct {
 		Enabled   bool   `json:"enabled"`
 		Readonly  bool   `json:"readonly"`
 		Directory string `json:"directory"`
+		Port      int    `json:"port"`
 		Status    string `json:"status"`
 	} `json:"webdav"`
 	HTTPS struct {
@@ -250,8 +251,24 @@ func testFileBrowsing() error {
 
 // testWebDAVService 测试WebDAV服务
 func testWebDAVService() error {
+	// 首先获取服务器状态以确定WebDAV端口
+	status, err := getServerStatus()
+	if err != nil {
+		return fmt.Errorf("无法获取服务器状态: %v", err)
+	}
+
+	if !status.WebDAV.Enabled {
+		return fmt.Errorf("WebDAV服务未启用")
+	}
+
+	webdavPort := status.WebDAV.Port
+	if webdavPort == 0 {
+		webdavPort = 8081 // 默认端口
+	}
+
 	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest("PROPFIND", "http://localhost:8080/webdav/", nil)
+	webdavURL := fmt.Sprintf("http://localhost:%d/webdav/", webdavPort)
+	req, err := http.NewRequest("PROPFIND", webdavURL, nil)
 	if err != nil {
 		return err
 	}
@@ -263,7 +280,7 @@ func testWebDAVService() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 207 && resp.StatusCode != 200 {
-		return fmt.Errorf("WebDAV PROPFIND状态码错误: %d", resp.StatusCode)
+		return fmt.Errorf("WebDAV PROPFIND状态码错误: %d (URL: %s)", resp.StatusCode, webdavURL)
 	}
 
 	return nil
