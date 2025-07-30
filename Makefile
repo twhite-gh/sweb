@@ -2,7 +2,7 @@
 PROJECT_NAME := sweb
 
 # 源文件列表，包含所有需要编译的Go文件
-SOURCE_FILES := ./src/main.go ./src/upload.go ./src/files.go ./src/webdav.go ./src/server.go ./src/utils.go ./src/socks5.go ./src/proxy.go
+SOURCE_FILES := ./src/main.go ./src/upload.go ./src/files.go ./src/webdav.go ./src/server.go ./src/utils.go ./src/socks5.go ./src/proxy.go ./src/https_proxy.go
 
 # 定义输出目录
 BUILD_DIR := ./bin
