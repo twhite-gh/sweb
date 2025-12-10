@@ -953,8 +953,8 @@ The server outputs detailed operation logs, including:
 
 If you have any questions or suggestions, please contact us through:
 
-  * Submitting an [可疑链接已删除]
-  * Starting a [可疑链接已删除]
+  * Submitting an [Issue](../../issues)
+  * Starting a [Discussion](../../discussions)
 
 ## ⭐ Support the Project
 
@@ -965,5 +965,6 @@ If this project has been helpful to you, please consider giving it a star ⭐
 **Simple Web File Server** - Making file management simple and efficient\! 🚀
 
 -----
+
 
 Would you like me to translate any other sections or provide a summary of the key features?
